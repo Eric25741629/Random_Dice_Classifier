@@ -6,7 +6,7 @@ import os
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
-
+import random
 
 class ImgDataset(Dataset):
     def __init__(self, x, y1=None, y2=None, transform=None):
@@ -48,7 +48,7 @@ def read_files_path(path):
     return image_files
 
 
-def readfile(path, class_list, class_total_num, background=False):
+def readfile(path, class_list, class_total_num,num_max=800, background=False):
     data_path = []
     x = []
     y1 = []
@@ -56,24 +56,47 @@ def readfile(path, class_list, class_total_num, background=False):
     for i in class_list:
         for num in class_total_num:
             data_path.append(path + i + str(num))
+
     if background:
         data_path.append(path + 'background')
+    
+
     for i in data_path:
         class_ = os.path.basename(i)
+        # r=random.random()
+        # if r<0.4:
+        #     continue
         if class_ != 'background':
             class_part = re.search(r'[a-z]+', class_).group()
             class_index = class_list.index(class_part)
             number_part = int(re.search(r'\d+', class_).group())
+
         else:
             number_part = 0
             class_index = len(class_list)
+        data_num = 0
         img_path_list = read_files_path(i)
+        if len(img_path_list)==0:
+            continue
+        random.shuffle(img_path_list)
+        random_float=num_max/len(img_path_list)
+        if random_float>1:
+            random_float=1
+        print(random_float)
         for j in img_path_list:
             #使用PIL讀取圖片
+            if random.random()<(1-random_float):
+                # print('跳過',(1-random_float))
+                continue
             img = Image.open(j)
-            x.append(img)
+            with Image.open(j) as img:
+                x.append(img.copy())  # 在這裡使用 .copy() 以確保正確關閉檔案
             y1.append(class_index)
             y2.append(number_part)
+            # print(i,class_,class_index,number_part)
+            data_num += 1
+            if data_num == num_max:
+                break
     return x, y1, y2
 
 
